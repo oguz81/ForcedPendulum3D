@@ -241,6 +241,7 @@ int main( void )
     float current_angle;
 
     do{
+        
 
         driving_force = A * cos(k * time);
         current_angle = theta * 180 / PI; //converts theta(radian) to degree
@@ -265,7 +266,7 @@ int main( void )
         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         
         glm::mat4 model = glm::mat4(1.0f);
-  
+            
         glm::mat4 view = glm::mat4(1.0f);        
           
 
@@ -302,7 +303,7 @@ int main( void )
         glBindVertexArray(cylinderVAO);
         glDrawArrays(GL_TRIANGLES, 0, 360);
 
-    /*
+  /*  
         glUseProgram(lightProgram);
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "view"),  1, GL_FALSE, glm::value_ptr(view));
@@ -362,7 +363,7 @@ void processInput(GLFWwindow *window){
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    float cameraSpeed = 2.5 * deltaTime;
+    float cameraSpeed = 8.5 * deltaTime;
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
