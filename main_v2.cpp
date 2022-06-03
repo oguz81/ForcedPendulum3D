@@ -63,7 +63,7 @@ const unsigned int SCR_HEIGHT = 768; // screen height
     void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
 //light position (necessary for lighting) 
-    glm::vec3 lightPos = glm::vec3(3.0f, -5.0f, 0.0f);
+    glm::vec3 lightPos = glm::vec3(3.0f, -15.0f, 0.0f);
 
 
 /******************main function***************************/
@@ -307,15 +307,19 @@ int main( void )
 
     
         glUseProgram(lightProgram);
+        glm::mat4 projection2 = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 model2 = glm::mat4(1.0f);
+        glm::mat4 view2 = glm::mat4(1.0f);
+        view2 = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        view2 = glm::translate(view2, lightPos);
+        view2 = glm::scale(view2, glm::vec3(0.2f, 0.2f, 0.2f));
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection2));
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "view"),  1, GL_FALSE, glm::value_ptr(view2));
-        model2 = glm::mat4(1.0f);
-        model2 = glm::translate(model2, glm::vec3(3.0f, 2.0f, 0.0f));
-        model2 = glm::scale(model2, glm::vec3(2.0f));
         
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "model"),  1, GL_FALSE, glm::value_ptr(model2));
         glBindVertexArray(lightSourceVAO);
         glDrawArrays(GL_TRIANGLES, 0, arrayElement);                
+     
 
         //drawing grid
         glUseProgram(gridProgram);
