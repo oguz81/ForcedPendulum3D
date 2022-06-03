@@ -12,7 +12,7 @@
 #include "stb_image.h"
 
 #define PI 3.141592   //Holy Pi!
-#define h 0.025       //step length for Runge-Kutta
+#define h 0.01       //step length for Runge-Kutta
 #define k 0.67        //driving force frequency (radian)
 #define THETA_0 0     //initial angle(radian)
 #define omega_0 0     //initial angular velocity
@@ -63,7 +63,7 @@ const unsigned int SCR_HEIGHT = 768; // screen height
     void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
 //light position (necessary for lighting) 
-    glm::vec3 lightPos = glm::vec3(3.0f, 2.0f, 0.0f);
+    glm::vec3 lightPos = glm::vec3(3.0f, -5.0f, 0.0f);
 
 
 /******************main function***************************/
@@ -266,16 +266,16 @@ int main( void )
         glUniform3f(glGetUniformLocation(sphereProgram, "lightColor"), 1.0f, 1.0f, 1.0f);           
         glUniform3fv(glGetUniformLocation(sphereProgram, "lightPos"), 1, glm::value_ptr(lightPos));
         
-         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-       
-        
-    
         glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::rotate(view, glm::radians(current_angle), glm::vec3(0.0f, 0.0f, 1.0f));            
-        view = glm::translate(view, glm::vec3(0.0f, 6.0f, -4.0f));      
-            
+        model = glm::rotate(model, glm::radians(current_angle), glm::vec3(0.0f, 0.0f, 1.0f));            
+        model = glm::translate(model, glm::vec3(0.0f, -6.0f, 0.0f));
+        glm::mat4 view = glm::mat4(1.0f);        
           
+
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
+        
+        glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "view"),  1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "model"),  1, GL_FALSE, glm::value_ptr(model));
@@ -304,19 +304,19 @@ int main( void )
 
         glBindVertexArray(cylinderVAO);
         glDrawArrays(GL_TRIANGLES, 0, 360);
-/*
+
     
         glUseProgram(lightProgram);
-        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "view"),  1, GL_FALSE, glm::value_ptr(view));
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(3.0f, 2.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(2.0f));
+        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection2));
+        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "view"),  1, GL_FALSE, glm::value_ptr(view2));
+        model2 = glm::mat4(1.0f);
+        model2 = glm::translate(model2, glm::vec3(3.0f, 2.0f, 0.0f));
+        model2 = glm::scale(model2, glm::vec3(2.0f));
         
-        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "model"),  1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(lightProgram, "model"),  1, GL_FALSE, glm::value_ptr(model2));
         glBindVertexArray(lightSourceVAO);
         glDrawArrays(GL_TRIANGLES, 0, arrayElement);                
-*/
+
         //drawing grid
         glUseProgram(gridProgram);
 
