@@ -110,12 +110,12 @@ int main( void )
     Shader lightShader("lightsource.vs", "lightsource.fs");
     Shader gridShader("grid.vs", "grid.fs");
     Shader planeShader("plane.vs", "plane.fs");
-    //Shader myLightShader("myvertex.vs", "fragment.fs");
+    
     unsigned int sphereProgram = sphereShader.programID();
     unsigned int lightProgram = lightShader.programID();
     unsigned int gridProgram = gridShader.programID();
     unsigned int planeProgram = planeShader.programID();
-    //unsigned int myLightProgram = myLightShader.programID();
+    
 
     int subdivision = 6; //number of subdivision for sphere
     int pointsPerRow = (int)pow(2, subdivision) + 1; //keeps number of points in a row(latitude or longtitude)
@@ -266,14 +266,14 @@ int main( void )
         glUniform3f(glGetUniformLocation(sphereProgram, "lightColor"), 1.0f, 1.0f, 1.0f);           
         glUniform3fv(glGetUniformLocation(sphereProgram, "lightPos"), 1, glm::value_ptr(lightPos));
         
-        
+         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+       
         
     
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, glm::radians(current_angle), glm::vec3(0.0f, 0.0f, 1.0f));    
-        glm::mat4 view = glm::mat4(1.0f);        
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -2.0f));      
-        glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = glm::mat4(1.0f);
+        view = glm::rotate(view, glm::radians(current_angle), glm::vec3(0.0f, 0.0f, 1.0f));            
+        view = glm::translate(view, glm::vec3(0.0f, 6.0f, -4.0f));      
             
           
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -304,8 +304,8 @@ int main( void )
 
         glBindVertexArray(cylinderVAO);
         glDrawArrays(GL_TRIANGLES, 0, 360);
-
-  /*  
+/*
+    
         glUseProgram(lightProgram);
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "view"),  1, GL_FALSE, glm::value_ptr(view));
@@ -316,7 +316,7 @@ int main( void )
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "model"),  1, GL_FALSE, glm::value_ptr(model));
         glBindVertexArray(lightSourceVAO);
         glDrawArrays(GL_TRIANGLES, 0, arrayElement);                
-
+*/
         //drawing grid
         glUseProgram(gridProgram);
 
@@ -348,7 +348,7 @@ int main( void )
 
         glBindVertexArray(coordinateVAO);
         glDrawArrays(GL_TRIANGLES, 0, 18);
-*/
+
         glfwSwapBuffers(window);
         glfwPollEvents();
 
