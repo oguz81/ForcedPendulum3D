@@ -1,3 +1,9 @@
+/*
+    FORCED PENDULUM IN 3D WITH REAL TIME PLOTTING
+    ouz81---07.06.2022
+    github.com/oguz81
+*/
+
 #include <stdio.h>
 #include <iostream>
 #include <GL/glew.h>
@@ -7,12 +13,12 @@
 #include "shader.h"
 #include <GLFW/glfw3.h>
 #include <cmath>
-#include "sphere.h"
+#include "drawfunctions.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #define PI 3.141592   //Holy Pi!
-#define h 0.01       //step length for Runge-Kutta
+#define h 0.025       //step length for Runge-Kutta
 #define k 0.67        //driving force frequency (radian)
 #define THETA_0 0     //initial angle(radian)
 #define omega_0 0     //initial angular velocity
@@ -54,7 +60,7 @@ const unsigned int SCR_HEIGHT = 768; // screen height
     float fov = 45.0f;
 
 //camera
-    glm::vec3 cameraPos = glm::vec3(4.0f, 0.0f, 16.0f);
+    glm::vec3 cameraPos = glm::vec3(8.0f, 0.0f, 22.0f);
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -63,7 +69,7 @@ const unsigned int SCR_HEIGHT = 768; // screen height
     void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 
 //light position (necessary for lighting) 
-    glm::vec3 lightPos = glm::vec3(3.0f, -15.0f, 0.0f);
+    glm::vec3 lightPos = glm::vec3(8.0f, 10.0f, 0.0f);
 
 
 /******************main function***************************/
@@ -82,7 +88,7 @@ int main( void )
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow( SCR_WIDTH, SCR_HEIGHT, "Sphere", NULL, NULL);
+    window = glfwCreateWindow( SCR_WIDTH, SCR_HEIGHT, "FORCED PENDULUM 3D", NULL, NULL);
     if( window == NULL ){
         fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
         getchar();
@@ -110,12 +116,15 @@ int main( void )
     Shader lightShader("lightsource.vs", "lightsource.fs");
     Shader gridShader("grid.vs", "grid.fs");
     Shader planeShader("plane.vs", "plane.fs");
-    
+    Shader plotShader("plot.vs", "plot.fs");
+
     unsigned int sphereProgram = sphereShader.programID();
     unsigned int lightProgram = lightShader.programID();
     unsigned int gridProgram = gridShader.programID();
     unsigned int planeProgram = planeShader.programID();
-    
+    unsigned int plotProgram = plotShader.programID();
+
+    /****SPHERE DRAWING*/
 
     int subdivision = 6; //number of subdivision for sphere
     int pointsPerRow = (int)pow(2, subdivision) + 1; //keeps number of points in a row(latitude or longtitude)
@@ -127,13 +136,16 @@ int main( void )
 
     drawSphere(subdivision, drawingvertices);
 
+    //The cylinder is the rod of the pendulum here. We complete drawing the pendulum with it.
     float cylinder[360];
     drawCylinder(cylinder);
 
-    float gridArray[612];
-    drawGrid(gridArray);
     
-    //sphere
+    float gridArray[252];
+    drawGrid(gridArray);
+
+    
+    //vertex objects for sphere
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -148,9 +160,30 @@ int main( void )
     // normal attribute
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-   
 
-    //light source   
+    //vertices for the arrow of driving force of the pendulum.
+    float forceArrow[] = {
+        -0.5f, 0.0f, 0.0f,
+        -0.1f, 0.0f, 0.0f,
+        -0.5f, 0.0f, 0.0f,
+        -0.3f, 0.1f, 0.0f,
+        -0.5f, 0.0f, 0.0f,
+        -0.3f, -0.1f, 0.0f
+    };
+
+    //vertex objects for the force arrow
+    unsigned int VAOArrow;
+    glGenVertexArrays(1, &VAOArrow);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAOArrow);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(forceArrow), forceArrow, GL_STATIC_DRAW);
+    
+    //position attribute for force arrow
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    //light source (if you want do draw a light source)  
     unsigned int lightSourceVAO;
     glGenVertexArrays(1, &lightSourceVAO);
     glGenBuffers(1, &VBO);
@@ -162,7 +195,7 @@ int main( void )
     glEnableVertexAttribArray(0);
 
      
-    //cylinder
+    //vertex objects for the cylinder (or the rod of the pendulum)
     unsigned int cylinderVAO;
     glGenVertexArrays(1, &cylinderVAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -178,6 +211,8 @@ int main( void )
     glEnableVertexAttribArray(1);
 
 
+
+
     //grid-------grid has separate VBO. it also has separate vertex and fragment shaders.
     unsigned int gridVBO,gridVAO;
     glGenVertexArrays(1, &gridVAO);
@@ -189,16 +224,17 @@ int main( void )
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    //coordinate plane
+    
+    //coordinate plane. We put the coordinate plane texture on this vertices.
     float coordinatePlane[] = {
-                8.0f,  5.0f, 0.0f,   0.0f, 1.0f,
-                14.0f, 5.0f, 0.0f,   1.0f, 1.0f,
-                8.0f,  -1.0f, 0.0f,   0.0f, 0.0f,
-                8.0f,  -1.0f, 0.0f,   0.0f, 0.0f,
-                14.0f, -1.0f, 0.0f,   1.0f, 0.0f,
-                14.0f, 5.0f, 0.0f,   1.0f, 1.0f
+                //vertex coordinates        //texture coordinates
+                8.0f,   5.0f, 0.0f,         0.0f, 1.0f,
+                14.0f,  5.0f, 0.0f,         1.0f, 1.0f,
+                8.0f,  -1.0f, 0.0f,         0.0f, 0.0f,
+                8.0f,  -1.0f, 0.0f,         0.0f, 0.0f,
+                14.0f, -1.0f, 0.0f,         1.0f, 0.0f,
+                14.0f,  5.0f, 0.0f,         1.0f, 1.0f
                 };
-
 
     unsigned int coordinateVBO,coordinateVAO;
     glGenVertexArrays(1, &coordinateVAO);
@@ -229,39 +265,45 @@ int main( void )
         glGenerateMipmap(GL_TEXTURE_2D);
     } else std::cout<<"NO IMAGE"<<std::endl;
     stbi_image_free(data);
-    
-    float theta= THETA_0;
-    float omg= omega_0;
+
+
+    //variables for Runge-Kutta method    
+    float theta = THETA_0;
+    float omg = omega_0;
     float time = 0;
 
-    float k1,k2,k3,k4,l1,l2,l3,l4;
+    float k1, k2, k3, k4, l1, l2, l3, l4;
     float driving_force;
     
-    //Initialize f and g functions.
-    f(time,theta,omg);
-    g(time,theta,omg);
+    //initializing f and g functions.
+    f(time, theta, omg);
+    g(time, theta, omg);
     float current_angle;
 
-    do{
-        
+    //array for plotting. When plotArray reachs the limit, this program will break down with segmentation fault error, of course. 
+    float plotArray[100000];
+    int plotCounter = 0;
+    
+    unsigned int plotVBO,plotVAO;
+    glGenVertexArrays(1, &plotVAO);
+    glGenBuffers(1, &plotVBO);
+    //glBindVertexArray, glBindBuffer and glBufferData functions are in the do-while loop for real-time plotting.
 
+    do{
+    
         driving_force = A * cos(k * time);
         current_angle = theta * 180 / PI; //converts theta(radian) to degree
-
 
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        float times =  1 * glfwGetTime();
-        glm::vec3 orbit(5 * sin(times), 1.0f,  5 * cos(times));
 
         processInput(window);
         glClearColor(0.6f, 0.6f, 0.6f, 0.0f);
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        //drawing sphere
         glUseProgram(sphereProgram);       
-
-        
         glUniform3f(glGetUniformLocation(sphereProgram, "objectColor"), 0.0f, 1.0f, 0.0f);
         glUniform3f(glGetUniformLocation(sphereProgram, "lightColor"), 1.0f, 1.0f, 1.0f);           
         glUniform3fv(glGetUniformLocation(sphereProgram, "lightPos"), 1, glm::value_ptr(lightPos));
@@ -270,34 +312,30 @@ int main( void )
         model = glm::rotate(model, glm::radians(current_angle), glm::vec3(0.0f, 0.0f, 1.0f));            
         model = glm::translate(model, glm::vec3(0.0f, -6.0f, 0.0f));
         glm::mat4 view = glm::mat4(1.0f);        
-          
-
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
-        
         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "view"),  1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "model"),  1, GL_FALSE, glm::value_ptr(model));
 
-         
+        //Holy Runge-Kutta!
+        k1 = h * f(time, theta, omg);
+        l1 = h * g(time, theta, omg);
+        k2 = h * f(time + (0.5 * h), theta + (0.5 * k1), omg + (0.5 * l1));
+        l2 = h * g(time + (0.5 * h), theta + (0.5 * k1), omg + (0.5 * l1));
+        k3 = h * f(time + (0.5 * h), theta + (0.5 * k2), omg + (0.5 * l2));
+        l3 = h * g(time + (0.5 * h), theta + (0.5 * k2), omg + (0.5 * l2));
+        k4 = h * f(time + h, theta + k3, omg + l3);
+        l4 = h * g(time + h, theta + k3, omg + l3);
 
-        k1= h*f(time,theta,omg);
-        l1= h*g(time,theta,omg);
-        k2= h*f(time+(0.5*h),theta+(0.5*k1),omg+(0.5*l1));
-        l2= h*g(time+(0.5*h),theta+(0.5*k1),omg+(0.5*l1));
-        k3= h*f(time+(0.5*h),theta+(0.5*k2),omg+(0.5*l2));
-        l3= h*g(time+(0.5*h),theta+(0.5*k2),omg+(0.5*l2));
-        k4= h*f(time+h,theta+k3,omg+l3);
-        l4= h*g(time+h,theta+k3,omg+l3);
-
-        theta = theta+(k1 + (2*k2) + (2*k3) + k4)/6;
-        omg = omg+(l1 + (2*l2) + (2*l3) + l4)/6;
+        theta = theta + (k1 + (2 * k2) + (2 * k3) + k4) / 6;
+        omg = omg + (l1 + (2 * l2) + (2 * l3) + l4) / 6;
         //Below two lines keep the theta in range of -2PI to 2PI.
-        if(theta>2*PI) theta= theta-(2*PI);
-        if(theta<-2*PI) theta= theta+(2*PI);
-        
-        time =time+h;
+        if(theta > PI)  theta = theta - (2 * PI);
+        if(theta < -PI) theta = theta + (2 * PI);
+    
+        time = time + h;
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, arrayElement);
@@ -305,7 +343,22 @@ int main( void )
         glBindVertexArray(cylinderVAO);
         glDrawArrays(GL_TRIANGLES, 0, 360);
 
+        //drawing force arrow
+        glm::mat4 projectionArrow = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 modelArrow= glm::mat4(1.0f);
+        modelArrow = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));//fixed it to the pendulum with 'model'
+        modelArrow = glm::scale(modelArrow, glm::vec3(-driving_force * 4.0f, 2.0f, 0.0f));
+        glm::mat4 viewArrow = glm::mat4(1.0f);
+        viewArrow = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        
+        glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projectionArrow));
+        glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "view"), 1, GL_FALSE, glm::value_ptr(viewArrow));
+        glUniformMatrix4fv(glGetUniformLocation(sphereProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelArrow));
+        glBindVertexArray(VAOArrow);
+        glDrawArrays(GL_LINES, 0, 18);
     
+        //if you want to draw a light source, use below lines
+        /*
         glUseProgram(lightProgram);
         glm::mat4 projection2 = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 model2 = glm::mat4(1.0f);
@@ -319,7 +372,7 @@ int main( void )
         glUniformMatrix4fv(glGetUniformLocation(lightProgram, "model"),  1, GL_FALSE, glm::value_ptr(model2));
         glBindVertexArray(lightSourceVAO);
         glDrawArrays(GL_TRIANGLES, 0, arrayElement);                
-     
+        */
 
         //drawing grid
         glUseProgram(gridProgram);
@@ -327,31 +380,60 @@ int main( void )
         glm::mat4 projectionGrid = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 viewGrid = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 modelGrid = glm::mat4(1.0f);
-        //glm::mat4 projection2 = glm::mat4(1.0f);
-        //glm::mat4 view2 = glm::mat4(1.0f);
-        viewGrid = glm::translate(viewGrid, glm::vec3(0.0f, 0.0f, 0.0f));
+        viewGrid = glm::translate(viewGrid, glm::vec3(7.0f, 0.0f, 0.0f));
+        
         glUniformMatrix4fv(glGetUniformLocation(gridProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projectionGrid));
         glUniformMatrix4fv(glGetUniformLocation(gridProgram, "view"),  1, GL_FALSE, glm::value_ptr(viewGrid));
         glUniformMatrix4fv(glGetUniformLocation(gridProgram, "model"),  1, GL_FALSE, glm::value_ptr(modelGrid));
 
         glBindVertexArray(gridVAO);
-        glDrawArrays(GL_LINES, 0, 612);
+        glDrawArrays(GL_LINES, 0, 252);
 
+        //coordinate plane
         glBindTexture(GL_TEXTURE_2D, texture);
         glUseProgram(planeProgram);
 
         glm::mat4 projectionPlane = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 viewPlane = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 modelPlane = glm::mat4(1.0f);
-        //glm::mat4 projection2 = glm::mat4(1.0f);
-        //glm::mat4 view2 = glm::mat4(1.0f);
         viewPlane = glm::translate(viewPlane, glm::vec3(0.0f, -6.0f, 0.0f));
+        viewPlane = glm::scale(viewPlane, glm::vec3(1.5f, 1.5f, 0.0f));
+        
         glUniformMatrix4fv(glGetUniformLocation(planeProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projectionPlane));
         glUniformMatrix4fv(glGetUniformLocation(planeProgram, "view"),  1, GL_FALSE, glm::value_ptr(viewPlane));
         glUniformMatrix4fv(glGetUniformLocation(planeProgram, "model"),  1, GL_FALSE, glm::value_ptr(modelPlane));
 
         glBindVertexArray(coordinateVAO);
         glDrawArrays(GL_TRIANGLES, 0, 18);
+        
+        //real-time plotting
+        plotArray[plotCounter] = theta;
+        plotCounter++;
+        plotArray[plotCounter] = omg;
+        plotCounter++;
+        plotArray[plotCounter] = 0.0f;
+        plotCounter++;
+       
+        glBindVertexArray(plotVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, plotVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(plotArray), plotArray, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glUseProgram(plotProgram);
+
+        glm::mat4 projectionPlot = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 viewPlot = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 modelPlot = glm::mat4(1.0f);
+        viewPlot = glm::translate(viewPlot, glm::vec3(16.5f, -3.0f, 0.1f));
+        
+        glUniformMatrix4fv(glGetUniformLocation(plotProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projectionPlot));
+        glUniformMatrix4fv(glGetUniformLocation(plotProgram, "view"),  1, GL_FALSE, glm::value_ptr(viewPlot));
+        glUniformMatrix4fv(glGetUniformLocation(plotProgram, "model"),  1, GL_FALSE, glm::value_ptr(modelPlot));
+        
+        glBindVertexArray(plotVAO);
+        glDrawArrays(GL_POINTS, 0 ,plotCounter - 1);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
